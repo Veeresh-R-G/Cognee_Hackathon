@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline Memory</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #30363d;
+    --accent:    #238636;
+    --accent-hi: #2ea043;
+    --red:       #da3633;
+    --yellow:    #d29922;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --code-bg:   #1c2128;
+    --tag-bg:    #1f2937;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  header .logo span { color: var(--accent-hi); }
+  header .badge {
+    font-size: 11px;
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 10px;
+    color: var(--muted);
+  }
+  header .powered {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  header .powered span { color: var(--accent-hi); font-weight: 600; }
+
+  /* ── Layout ── */
+  .main { display: flex; flex: 1; height: calc(100vh - 53px); overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+    overflow-y: auto;
+  }
+  .sidebar-section { padding: 0 16px 16px; }
+  .sidebar-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .pipeline-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    transition: background 0.15s;
+    margin-bottom: 2px;
+  }
+  .pipeline-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .pipeline-item .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent-hi);
+    flex-shrink: 0;
+  }
+  .pipeline-item .dot.forgotten { background: var(--red); }
+  .pipeline-item .owner { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+  .forget-btn {
+    margin-top: 2px;
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: none;
+  }
+  .pipeline-item:hover .forget-btn { display: block; }
+  .forget-btn:hover { background: var(--red); color: white; border-color: var(--red); }
+
+  .sidebar-divider { border: none; border-top: 1px solid var(--border); margin: 8px 16px 16px; }
+
+  .canned-section { padding: 0 16px; }
+  .canned-item {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    margin-bottom: 6px;
+    line-height: 1.4;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .canned-item:hover { border-color: var(--accent-hi); color: var(--text); }
+
+  /* ── Main content ── */
+  .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Input bar ── */
+  .input-bar {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .input-bar label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .input-row { display: flex; gap: 10px; }
+  .symptom-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .symptom-input::placeholder { color: var(--muted); }
+  .symptom-input:focus { border-color: var(--accent-hi); }
+  .fire-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fire-btn:hover { background: var(--accent-hi); }
+  .fire-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .fire-btn .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .fire-btn.loading .spinner { display: block; }
+  .fire-btn.loading .btn-text { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Results area ── */
+  .results { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--muted);
+    text-align: center;
+    gap: 12px;
+  }
+  .empty-state .icon { font-size: 40px; opacity: 0.4; }
+  .empty-state p { font-size: 14px; max-width: 300px; line-height: 1.6; }
+
+  /* ── Alert card ── */
+  .alert-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    animation: slideIn 0.25s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .alert-header {
+    padding: 14px 18px;
+    background: rgba(218, 54, 51, 0.08);
+    border-bottom: 1px solid rgba(218, 54, 51, 0.2);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .alert-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--red);
+    margin-top: 4px;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px var(--red);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+  .alert-title { font-size: 13px; font-weight: 600; color: #ff6b6b; }
+  .alert-symptom { font-size: 14px; color: var(--text); margin-top: 2px; line-height: 1.5; }
+  .alert-time { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; padding-top: 2px; }
+
+  .alert-body { padding: 18px; }
+  .memory-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--accent-hi);
+    background: rgba(46, 160, 67, 0.08);
+    border: 1px solid rgba(46, 160, 67, 0.2);
+    border-radius: 4px;
+    padding: 3px 8px;
+    margin-bottom: 14px;
+  }
+
+  /* markdown-rendered content */
+  .memory-content { font-size: 14px; line-height: 1.7; color: var(--text); }
+  .memory-content h2 { font-size: 15px; font-weight: 700; margin: 0 0 10px; color: var(--text); }
+  .memory-content h3 { font-size: 13px; font-weight: 600; margin: 16px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .memory-content p  { margin-bottom: 10px; }
+  .memory-content strong { color: #58a6ff; font-weight: 600; }
+  .memory-content em  { color: var(--yellow); font-style: normal; }
+  .memory-content code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    color: #79c0ff;
+  }
+  .memory-content hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  /* tables */
+  .memory-content table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; font-size: 13px; }
+  .memory-content th {
+    text-align: left;
+    padding: 7px 12px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .memory-content td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .memory-content tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  /* blockquote-style notes */
+  .memory-content blockquote {
+    border-left: 3px solid var(--yellow);
+    padding: 8px 14px;
+    margin: 10px 0;
+    background: rgba(210, 153, 34, 0.06);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 100;
+    animation: slideIn 0.2s ease;
+  }
+  .toast.success { border-color: var(--accent); color: var(--accent-hi); }
+  .toast.error   { border-color: var(--red);    color: #ff6b6b; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Pipeline<span>Memory</span></div>
+  <div class="badge">Powered by Cognee</div>
+  <div class="powered">memory layer: <span>graph + vector</span> · all four lifecycle APIs</div>
+</header>
+
+<div class="main">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Monitored Pipelines</div>
+      <div id="pipeline-list">
+        <div class="pipeline-item" style="color:var(--muted);font-size:12px;">Loading...</div>
+      </div>
+    </div>
+
+    <hr class="sidebar-divider">
+
+    <div class="canned-section">
+      <div class="sidebar-label" style="padding: 0 0 8px;">Try These Failures</div>
+      <div class="canned-item" onclick="fillAndFire(`finance_revenue_recognition totals look about 20% low this week and nobody changed anything we know of`)">
+        💸 Finance numbers 20% low, no known changes
+      </div>
+      <div class="canned-item" onclick="fillAndFire(`customer_360 Airflow job has been stuck for 40 minutes, way past normal runtime`)">
+        ⏱️ customer_360 Airflow stuck 40 min past SLA
+      </div>
+      <div class="canned-item" onclick="fillAndFire(`support seeing blank shipping_address on a bunch of customer_360 records since this morning`)">
+        📭 Blank shipping_address on customer_360
+      </div>
+      <div class="canned-item" onclick="fillAndFire(`orders_fact showing a sudden spike in duplicate order_ids overnight`)">
+        🔁 Duplicate order_ids spike on orders_fact
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="content">
+    <div class="input-bar">
+      <label>Describe the failure symptom — as you'd type it to a colleague</label>
+      <div class="input-row">
+        <input
+          class="symptom-input"
+          id="symptom-input"
+          type="text"
+          placeholder="e.g. orders_fact showing 15% null values in region_code since this morning"
+          onkeydown="if(event.key==='Enter') fire()"
+        />
+        <button class="fire-btn" id="fire-btn" onclick="fire()">
+          <div class="spinner"></div>
+          <span class="btn-text">🔍 Investigate</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="results" id="results">
+      <div class="empty-state">
+        <div class="icon">🧠</div>
+        <p>Describe a pipeline failure above and Pipeline Memory will instantly surface matching historical incidents — including root cause, fix, and owner.</p>
+        <p style="font-size:12px;color:var(--muted);">Memory is graph-structured, so semantically similar failures match even when the wording is completely different.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Minimal markdown renderer ──────────────────────────────────────────────
+function renderMarkdown(md) {
+  return md
+    // headings
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    // blockquote
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    // hr
+    .replace(/^---$/gm, '<hr>')
+    // bold+italic combos
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // tables (simple)
+    .replace(/(\|[^\n]+\|\n)(\|[-| :]+\|\n)((?:\|[^\n]+\|\n?)+)/g, parseTable)
+    // paragraphs (double newline)
+    .replace(/\n\n+/g, '</p><p>')
+    // single newlines inside paragraphs
+    .replace(/\n/g, '<br>')
+    // wrap
+    .replace(/^(.)/gm, '<p>$1')
+    .replace(/(<\/h[23]>|<\/blockquote>|<\/table>|<hr>)/g, '$1');
+}
+
+function parseTable(match, header, sep, body) {
+  const headerCells = header.trim().split('|').filter(Boolean).map(c => `<th>${c.trim()}</th>`).join('');
+  const bodyRows = body.trim().split('\n').map(row => {
+    const cells = row.split('|').filter(Boolean).map(c => `<td>${renderMarkdown(c.trim())}</td>`).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+  return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+const forgottenPipelines = new Set();
+
+// ── Load pipelines ─────────────────────────────────────────────────────────
+async function loadPipelines() {
+  const res = await fetch('/pipelines').catch(() => null);
+  if (!res || !res.ok) return;
+  const pipelines = await res.json();
+  const list = document.getElementById('pipeline-list');
+  list.innerHTML = '';
+  pipelines.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'pipeline-item';
+    el.id = `pipeline-${p.name}`;
+    el.innerHTML = `
+      <div class="dot" id="dot-${p.name}"></div>
+      <span>${p.name}</span>
+      <button class="forget-btn" onclick="forgetPipeline('${p.name}', event)">forget</button>
+    `;
+    list.appendChild(el);
+  });
+}
+
+// ── forget() ───────────────────────────────────────────────────────────────
+async function forgetPipeline(name, event) {
+  event.stopPropagation();
+  if (!confirm(`Prune ALL memory for the '${name}' pipeline? This cannot be undone.`)) return;
+  const res = await fetch('/forget', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({pipeline: name})
+  });
+  const data = await res.json();
+  if (res.ok) {
+    forgottenPipelines.add(name);
+    document.getElementById(`dot-${name}`).classList.add('forgotten');
+    showToast(`✂️ ${name} memory pruned`, 'success');
+  } else {
+    showToast(`Error: ${data.error}`, 'error');
+  }
+}
+
+// ── investigate() ──────────────────────────────────────────────────────────
+async function fire() {
+  const input = document.getElementById('symptom-input');
+  const btn = document.getElementById('fire-btn');
+  const symptom = input.value.trim();
+  if (!symptom) return;
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+
+  const res = await fetch('/investigate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({symptom})
+  }).catch(() => null);
+
+  btn.disabled = false;
+  btn.classList.remove('loading');
+
+  if (!res || !res.ok) {
+    showToast('Request failed — is the server running?', 'error');
+    return;
+  }
+
+  const data = await res.json();
+  if (data.error) { showToast(data.error, 'error'); return; }
+
+  renderAlertCard(data.symptom, data.result);
+  input.value = '';
+}
+
+function fillAndFire(text) {
+  document.getElementById('symptom-input').value = text;
+  fire();
+}
+
+// ── Render alert card ──────────────────────────────────────────────────────
+function renderAlertCard(symptom, result) {
+  const results = document.getElementById('results');
+
+  // clear empty state on first result
+  const empty = results.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const now = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
+  const card = document.createElement('div');
+  card.className = 'alert-card';
+  card.innerHTML = `
+    <div class="alert-header">
+      <div class="alert-dot"></div>
+      <div>
+        <div class="alert-title">🔔 NEW FAILURE DETECTED</div>
+        <div class="alert-symptom">${escHtml(symptom)}</div>
+      </div>
+      <div class="alert-time">${now}</div>
+    </div>
+    <div class="alert-body">
+      <div class="memory-tag">🧠 Pipeline Memory (auto-posted, no one asked)</div>
+      <div class="memory-content">${renderMarkdown(result)}</div>
+    </div>
+  `;
+  // newest on top
+  results.insertBefore(card, results.firstChild);
+  card.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type='success') {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  clearTimeout(toastTimer);
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  toastTimer = setTimeout(() => el.remove(), 3500);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadPipelines();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+[
+  "pipeline_memory__customer_360",
+  "pipeline_memory__finance_revenue_recognition",
+  "pipeline_memory__inventory_snapshot",
+  "pipeline_memory__marketing_attribution",
+  "pipeline_memory__orders_fact"
+]

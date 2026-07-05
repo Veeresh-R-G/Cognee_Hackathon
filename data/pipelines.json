@@ -1,0 +1,52 @@
+[
+  {
+    "name": "orders_fact",
+    "owner": "Priya Nair",
+    "team": "Revenue Analytics",
+    "upstream": [
+      "raw_orders",
+      "raw_customers"
+    ],
+    "tool": "dbt + Snowflake"
+  },
+  {
+    "name": "customer_360",
+    "owner": "Marcus Lee",
+    "team": "Growth",
+    "upstream": [
+      "orders_fact",
+      "support_tickets",
+      "marketing_events"
+    ],
+    "tool": "dbt + Snowflake"
+  },
+  {
+    "name": "inventory_snapshot",
+    "owner": "Devika Rao",
+    "team": "Supply Chain",
+    "upstream": [
+      "raw_warehouse_events"
+    ],
+    "tool": "Airflow + dbt"
+  },
+  {
+    "name": "marketing_attribution",
+    "owner": "Tom Becker",
+    "team": "Growth",
+    "upstream": [
+      "marketing_events",
+      "orders_fact"
+    ],
+    "tool": "Airflow + Spark"
+  },
+  {
+    "name": "finance_revenue_recognition",
+    "owner": "Priya Nair",
+    "team": "Finance Eng",
+    "upstream": [
+      "orders_fact",
+      "refunds_table"
+    ],
+    "tool": "dbt + Snowflake"
+  }
+]
