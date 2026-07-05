@@ -2,6 +2,11 @@
 
 > AI-powered institutional memory for data pipeline incidents — built on [Cognee](https://github.com/topoteretes/cognee)'s hybrid graph-vector memory layer.
 
+### Short Demo Vid
+https://www.loom.com/share/6e27f1ac52324105b1fbd14dd834b65b
+
+---
+
 ## The Problem
 
 When a data pipeline breaks at 3am, the engineer debugging it almost never has the full picture. The root cause and fix for "this exact failure shape" may already exist — buried in a Slack thread, in someone's head, in a postmortem doc nobody thought to search. Wikis and runbooks don't solve this because **the bottleneck isn't writing — it's retrieval**. Nobody keyword-searches "blank shipping_address" and finds the upstream schema change that caused silent nulls three months ago on a completely different pipeline.
